@@ -44,6 +44,7 @@ gem "bootsnap", require: false
 
 gem 'telegram-bot-ruby'
 
+gem 'discordrb'
 
 # Use Sass to process CSS
 # gem "sassc-rails"
