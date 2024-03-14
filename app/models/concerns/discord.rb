@@ -1,0 +1,2 @@
+class Discord < BotToken
+end

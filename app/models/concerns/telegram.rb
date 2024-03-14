@@ -1,0 +1,2 @@
+class Telegram < BotToken
+end
