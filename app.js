@@ -1,4 +1,5 @@
 const TelegramBot = require("node-telegram-bot-api");
+const { generateText } = require("./api");
 const http = require("http");
 
 const options = {
@@ -37,7 +38,16 @@ const req = http.request(options, (res) => {
 
       bot.on("message", (msg) => {
         const chatId = msg.chat.id;
-        bot.sendMessage(chatId, "I received your message: " + msg.text);
+        generateText(msg.toString(), (error, response) => {
+          if (error) {
+            console.error("Failed to generate text:", error);
+            bot.sendMessage(chatId, "Failed to generate text: " + error);
+            return;
+          } else {
+            console.log("Generated text:", response);
+            bot.sendMessage(chatId, "I received your message: " + response);
+          }
+        });
       });
     });
     console.log("Bot is running...");

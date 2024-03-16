@@ -1,17 +1,13 @@
-require 'discordrb'
-require 'json'
 require 'net/http'
+require 'json'
 
-bot = Discordrb::Bot.new token: 'MTIxODE2MDUwMzkyMzQxMzA3Mg.GYm2ta.biXgfnL0OW9ksQhY0EDVovieuI0_lXkOwFEFsE'
-GENERATE_TEXT_API_URL = 'http://alb-beta.dev.moemate.io/generate'
+class TextGenerationService
+  API_URL = 'http://alb-beta.dev.moemate.io/generate'.freeze
 
-bot.message do |event|
-  if event.message.content
-    inputs = event.message.content.to_s
-    
-    uri = URI(GENERATE_TEXT_API_URL)
+  def self.generate_text(inputs)
+    uri = URI(API_URL)
     headers = {
-      'Host': 'llm7',
+      'Host': 'llm2',
       'Content-Type': 'application/json'
     }
 
@@ -40,13 +36,9 @@ bot.message do |event|
     response = Net::HTTP.post(uri, data.to_json, headers)
 
     if response.code == '200'
-      response_data = JSON.parse(response.body)
-      generated_text = response_data['generated_text']
-      event.respond "Generated text: #{generated_text}"
+      JSON.parse(response.body)
     else
-      event.respond "Failed to generate text. Error: #{response.body}"
+      nil # or handle error as needed
     end
   end
 end
-
-bot.run

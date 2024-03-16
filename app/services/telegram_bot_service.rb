@@ -4,7 +4,7 @@ class TelegramBotService
   def self.webhook
     token = '7003487106:AAGnw_CmEaVmaLvyyOUgl6KSJPu0vRppGP0'
     bot = Telegram::Bot::Client.new(token)
-    byebug
+
 		bot.listen do |message|
 			case message.text
 			when '/start'
