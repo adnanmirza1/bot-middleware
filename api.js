@@ -7,7 +7,7 @@ function generateText(inputs, callback) {
       best_of: 1,
       decoder_input_details: true,
       details: false,
-      stream: true,
+      stream: false,
       do_sample: true,
       max_new_tokens: 500,
       repetition_penalty: 1.15,
@@ -32,6 +32,7 @@ function generateText(inputs, callback) {
       Host: "llm7",
       "Content-Type": "application/json",
       "Content-Length": data.length,
+      "model_id": "llm7"
     },
   };
 

@@ -7,7 +7,7 @@ class TextGenerationService
   def self.generate_text(inputs)
     uri = URI(API_URL)
     headers = {
-      'Host': 'llm2',
+      'model_id': 'llm7',
       'Content-Type': 'application/json'
     }
 
@@ -17,7 +17,7 @@ class TextGenerationService
         best_of: 1,
         decoder_input_details: true,
         details: false,
-        stream: true,
+        stream: false,
         do_sample: true,
         max_new_tokens: 500,
         repetition_penalty: 1.15,
@@ -32,7 +32,7 @@ class TextGenerationService
         watermark: false
       }
     }
-
+    
     response = Net::HTTP.post(uri, data.to_json, headers)
 
     if response.code == '200'

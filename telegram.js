@@ -25,31 +25,20 @@ const req = http.request(options, (res) => {
       bots.push(bot);
     });
 
-    bots.forEach((bot, index) => {
-      bot.onText(/\/start/, (msg) => {
-        const chatId = msg.chat.id;
-        bot.sendMessage(chatId, `Hello! I am bot ${index}.`);
-      });
-
-      bot.onText(/\/hello/, (msg) => {
-        const chatId = msg.chat.id;
-        bot.sendMessage(chatId, "Hello there!");
-      });
-
+    bots.forEach((bot) => {
       bot.on("message", (msg) => {
-        const chatId = msg.chat.id;
-        generateText(msg.toString(), (error, response) => {
-          if (error) {
-            console.error("Failed to generate text:", error);
-            bot.sendMessage(chatId, "Failed to generate text: " + error);
-            return;
-          } else {
-            console.log("Generated text:", response);
-            bot.sendMessage(chatId, "I received your message: " + response);
-          }
-        });
+        handleMessage(msg, bot);
+      });
+
+      bot.on("photo", (msg) => {
+        handlePhoto(msg, bot);
+      });
+
+      bot.on("voice", (msg) => {
+        handleVoice(msg, bot);
       });
     });
+
     console.log("Bot is running...");
   });
 });
@@ -59,3 +48,75 @@ req.on("error", (error) => {
 });
 
 req.end();
+
+function handleMessage(msg, bot) {
+  const chatId = msg.chat.id;
+  if (msg.text) {
+    generateText(msg.text, (error, response) => {
+      if (error) {
+        console.error("Failed to generate text:", error);
+        bot.sendMessage(chatId, "Failed to generate text: " + error);
+        return;
+      } else {
+        console.log("Generated text:", response);
+        bot.sendMessage(chatId, "I received your message: " + response);
+      }
+    });
+  }
+}
+
+function handlePhoto(msg, bot) {
+  const chatId = msg.chat.id;
+  const photoFileId = msg.photo[0].file_id;
+  bot
+    .getFile(photoFileId)
+    .then((photoInfo) => {
+      const photoUrl = `https://api.telegram.org/file/bot${`6819618027:AAHV1_iRyeuNG9nDOT87mD7ZP_9PxfULTio`}/${
+        photoInfo.file_path
+      }`;
+
+      // Pass the photo URL to generate text
+      generateText(photoUrl, (error, response) => {
+        if (error) {
+          console.error("Failed to generate text:", error);
+          bot.sendMessage(chatId, "Failed to generate text: " + error);
+        } else {
+          bot
+            .sendPhoto(chatId, photoFileId, { caption: response })
+            .then(() => console.log("Photo sent successfully"))
+            .catch((error) => console.error("Failed to send photo:", error));
+        }
+      });
+    })
+    .catch((error) => {
+      console.error("Failed to get photo info:", error);
+      bot.sendMessage(chatId, "Failed to get photo info: " + error);
+    });
+}
+
+function handleVoice(msg, bot) {
+  const chatId = msg.chat.id;
+  const voiceId = msg.voice.file_id;
+  console.log(msg.voice);
+  if (msg.voice) {
+    generateText(msg.voice.file_id, (error, response) => {
+      if (error) {
+        console.error("Failed to generate text:", error);
+        bot.sendMessage(chatId, "Failed to generate text: " + error);
+        return;
+      } else {
+        console.log("Generated text:", response);
+        bot
+          .sendVoice(chatId, response, { caption: "I received your message: " })
+          .then(() => console.log("Voice message sent successfully"))
+          .catch((error) =>
+            console.error("Failed to send voice message:", error)
+          );
+      }
+    });
+  }
+  // bot
+  //   .sendVoice(chatId, voiceId, { caption: "I received your voice message!" })
+  //   .then(() => console.log("Voice message sent successfully"))
+  //   .catch((error) => console.error("Failed to send voice message:", error));
+}

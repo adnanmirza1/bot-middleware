@@ -1,12 +1,12 @@
-require 'discordrb'
+require 'telegram/bot'
 require 'json'
 require 'net/http'
 
 GENERATE_TEXT_API_URL = 'http://alb-beta.dev.moemate.io/generate'
-DISCORD_TOKENS_URL = 'http://localhost:3000/get_discord_tokens'
+TELEGRAM_TOKENS_URL = 'http://localhost:3000/get_tokens'
 
-def get_discord_tokens
-  url = URI.parse(DISCORD_TOKENS_URL)
+def get_telegram_tokens
+  url = URI.parse(TELEGRAM_TOKENS_URL)
   response = Net::HTTP.get_response(url)
 
   if response.is_a?(Net::HTTPSuccess)
@@ -27,12 +27,8 @@ def generate_text(inputs)
   data = {
     inputs: inputs,
     parameters: {
-      best_of: 1,
-      decoder_input_details: true,
-      details: false,
-      stream: false,
-      do_sample: true,
-      max_new_tokens: 500,
+      best_of: 1, decoder_input_details: true,  details: false, stream: false,
+      do_sample: true, max_new_tokens: 500,
       repetition_penalty: 1.15,
       return_full_text: false,
       seed: nil,
@@ -57,27 +53,19 @@ def generate_text(inputs)
   end
 end
 
-tokens = get_discord_tokens
-bots = []
+tokens = get_telegram_tokens
 
 tokens.each do |token|
-  bot = Discordrb::Bot.new token: token
-  bots.push(bot)
-end
-
-bots.each do |bot|
-  bot.message do |event|
-    if event.message.content
-      inputs = event.message.content.to_s
-      generated_text = generate_text(inputs)
-      
-      if generated_text
-        event.respond "#{generated_text}"
-      else
-        event.respond "Failed to generate text."
+  Thread.new do
+    Telegram::Bot::Client.run(token) do |bot|
+      bot.listen do |message|
+        inputs = message.text
+        generated_text = generate_text(inputs)
+        bot.api.send_message(chat_id: message.chat.id, text: "Hello, #{generated_text}")
       end
     end
   end
-  
-  bot.run  
 end
+
+# Sleep to keep the main thread alive
+sleep

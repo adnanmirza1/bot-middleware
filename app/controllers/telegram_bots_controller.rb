@@ -4,4 +4,9 @@ class TelegramBotsController < ApplicationController
     tokens = Telegram.all.pluck(:token)
     render json: tokens
   end
+
+  def get_discord_tokens
+    tokens = Discord.pluck(:token)
+    render json: tokens
+  end
 end
