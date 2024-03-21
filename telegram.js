@@ -1,6 +1,12 @@
 const TelegramBot = require("node-telegram-bot-api");
 const { generateText } = require("./api");
+const { uploadAudioFile } = require("./audioApi");
+const { downloadBotFile } = require("./downloadBotFile.js");
+const { convertTextToSpeech } = require("./textToAudio");
+const textToImage = require("./textToImage");
+const getImageTags = require("./imageToText");
 const http = require("http");
+const fs = require("fs");
 
 const options = {
   hostname: "localhost",
@@ -65,58 +71,94 @@ function handleMessage(msg, bot) {
   }
 }
 
-function handlePhoto(msg, bot) {
+async function handlePhoto(msg, bot) {
+  const token = bot.token;
   const chatId = msg.chat.id;
   const photoFileId = msg.photo[0].file_id;
-  bot
-    .getFile(photoFileId)
-    .then((photoInfo) => {
-      const photoUrl = `https://api.telegram.org/file/bot${`6819618027:AAHV1_iRyeuNG9nDOT87mD7ZP_9PxfULTio`}/${
-        photoInfo.file_path
-      }`;
-
-      // Pass the photo URL to generate text
-      generateText(photoUrl, (error, response) => {
-        if (error) {
-          console.error("Failed to generate text:", error);
-          bot.sendMessage(chatId, "Failed to generate text: " + error);
-        } else {
-          bot
-            .sendPhoto(chatId, photoFileId, { caption: response })
-            .then(() => console.log("Photo sent successfully"))
-            .catch((error) => console.error("Failed to send photo:", error));
-        }
-      });
+  const downloaded_file_path = `image_file_${Date.now()}.png`;
+  await downloadBotFile(photoFileId, token, downloaded_file_path)
+    .then((downloadedFilePath) => {
+      if (downloadedFilePath) {
+        getImageTags(downloadedFilePath)
+          .then((tags) => {
+            textToImage(tags).then((imagePath) => {
+              fs.readFile(imagePath, (err, data) => {
+                if (err) {
+                  console.error("Error reading file:", err);
+                  return;
+                }
+                bot
+                  .sendPhoto(chatId, data)
+                  .then(() => {
+                    console.log("Image sent successfully to bot.");
+                  })
+                  .catch((error) => {
+                    console.error("Failed to send image:", error);
+                  });
+              });
+            });
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+          });
+      } else {
+        console.log("Failed to download file.");
+      }
     })
     .catch((error) => {
-      console.error("Failed to get photo info:", error);
-      bot.sendMessage(chatId, "Failed to get photo info: " + error);
+      console.error("Error:", error);
     });
 }
 
-function handleVoice(msg, bot) {
+async function handleVoice(msg, bot) {
+  const token = bot.token;
   const chatId = msg.chat.id;
   const voiceId = msg.voice.file_id;
-  console.log(msg.voice);
+  const downloaded_file_path = `audio_file_${Date.now()}.ogg`;
   if (msg.voice) {
-    generateText(msg.voice.file_id, (error, response) => {
-      if (error) {
-        console.error("Failed to generate text:", error);
-        bot.sendMessage(chatId, "Failed to generate text: " + error);
-        return;
-      } else {
-        console.log("Generated text:", response);
-        bot
-          .sendVoice(chatId, response, { caption: "I received your message: " })
-          .then(() => console.log("Voice message sent successfully"))
-          .catch((error) =>
-            console.error("Failed to send voice message:", error)
-          );
-      }
-    });
+    await downloadBotFile(voiceId, token, downloaded_file_path)
+      .then((downloadedFilePath) => {
+        if (downloadedFilePath) {
+          uploadAudioFile(downloadedFilePath)
+            .then((responseData) => {
+              generateText(responseData, (error, text) => {
+                if (error) {
+                  console.error("Failed to generate text:", error);
+                  bot.sendMessage(chatId, "Failed to generate text: " + error);
+                  return;
+                } else {
+                  convertTextToSpeech(text, (error, filePath) => {
+                    if (error) {
+                      console.error("Failed to convert text to speech:", error);
+                    } else {
+                      fs.readFile(filePath, (err, data) => {
+                        if (err) {
+                          console.error("Error reading file:", err);
+                          return;
+                        }
+                        bot
+                          .sendVoice(chatId, data)
+                          .then(() => {
+                            console.log("Audio file sent successfully to bot.");
+                          })
+                          .catch((error) => {
+                            console.error("Failed to send audio file:", error);
+                          });
+                      });
+                    }
+                  });
+                }
+              });
+            })
+            .catch((error) => {
+              console.error("Error:", error);
+            });
+        } else {
+          console.log("Failed to download audio file.");
+        }
+      })
+      .catch((error) => {
+        console.error("Error:", error);
+      });
   }
-  // bot
-  //   .sendVoice(chatId, voiceId, { caption: "I received your voice message!" })
-  //   .then(() => console.log("Voice message sent successfully"))
-  //   .catch((error) => console.error("Failed to send voice message:", error));
 }

@@ -59,9 +59,18 @@ tokens.each do |token|
   Thread.new do
     Telegram::Bot::Client.run(token) do |bot|
       bot.listen do |message|
-        inputs = message.text
-        generated_text = generate_text(inputs)
-        bot.api.send_message(chat_id: message.chat.id, text: "Hello, #{generated_text}")
+        case message
+        when Telegram::Bot::Types::Message
+          if message.audio
+            # Handle audio message
+          elsif message.photo
+            # Handle photo message
+          else
+            inputs = message.text
+            generated_text = generate_text(inputs)
+            bot.api.send_message(chat_id: message.chat.id, text: "Hello, #{generated_text}")
+          end
+        end
       end
     end
   end

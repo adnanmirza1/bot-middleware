@@ -47,7 +47,7 @@ def generate_text(inputs)
   }
 
   response = Net::HTTP.post(uri, data.to_json, headers)
-
+  
   if response.code == '200'
     response_data = JSON.parse(response.body)
     return response_data['generated_text']

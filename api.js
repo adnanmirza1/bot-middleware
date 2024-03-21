@@ -32,7 +32,7 @@ function generateText(inputs, callback) {
       Host: "llm7",
       "Content-Type": "application/json",
       "Content-Length": data.length,
-      "model_id": "llm7"
+      model_id: "llm7",
     },
   };
 
@@ -44,8 +44,15 @@ function generateText(inputs, callback) {
     });
 
     res.on("end", () => {
-      console.log("response: " + responseData);
-      callback(null, responseData);
+      try {
+        const responseObject = JSON.parse(responseData);
+        const generatedText = responseObject["generated_text"];
+        console.log("response: " + generatedText);
+        callback(null, generatedText);
+      } catch (error) {
+        console.error("error parsing response: " + error);
+        callback(error, null);
+      }
     });
   });
 
@@ -53,7 +60,6 @@ function generateText(inputs, callback) {
     console.error("error: " + error);
     callback(error, null);
   });
-
   req.write(data);
   req.end();
 }
