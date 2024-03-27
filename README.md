@@ -53,7 +53,7 @@ To create a Discord bot, follow these steps:
 
 - Once you obtain the bot tokens from Telegram or Discord, save them in your database. (We can achieve this by Hitting the Api)
 
-##OR 
+## OR 
 
 - Open your terminal and run command `rails c`.
 - Generate a Telegram token with the command `Telegram.create(token: "your telegram bot token")`.
