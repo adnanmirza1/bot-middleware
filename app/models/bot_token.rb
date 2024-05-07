@@ -1,2 +1,0 @@
-class BotToken < ApplicationRecord
-end

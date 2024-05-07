@@ -1,9 +1,19 @@
+require './config/environment.rb'
+require './image_to_text'
+require './audio_to_text'
+require './text_to_audio'
+require './ai_prompt.rb'
+require './ai_generation_text.rb'
+require './get_character.rb'
+require './helpers.rb'
 require 'telegram/bot'
+require 'mini_magick'
 require 'json'
 require 'net/http'
+require "byebug"
 
-GENERATE_TEXT_API_URL = 'http://alb-beta.dev.moemate.io/generate'
 TELEGRAM_TOKENS_URL = 'http://localhost:3000/get_tokens'
+TOKEN = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IlMzLUstVWhieEtHYnExbF8tbEloMiJ9.eyJhcHBfbWV0YWRhdGEiOnsiZGlzY29yZF9hY2Nlc3NfdG9rZW4iOiJDV24xOXZXcUlJNktGMmRxampkUmFmRmR1OHN4Nk4iLCJkaXNjb3JkX3JlZnJlc2hfdG9rZW4iOiJUQVBUMWhJVXhxYXNUVEd4VWI3MEVqeDhTc2IxYlAiLCJkaXNjb3JkX3Rva2VuX2NyZWF0ZWRfYXQiOiJGcmkgQXByIDI2IDIwMjQiLCJzdHJpcGVfY3VzdG9tZXJfaWQiOiJjdXNfUHdSNjl3WG9BQ0htUU8iLCJzdWJfcHJvdmlkZXIiOiJzdHJpcGUiLCJzdWJfc3RhdHVzIjoicHJvIiwidHdpdHRlcl9hY2Nlc3NfdG9rZW4iOiJVbFZrTjNGNE16aEdkMnRrWDBWRVdGOWZaalpCVVhsclVHMWxNbW90WVc1TFgxWjZkWEpDTkdsblFtUTJPakUzTVRNME16Z3dPVEUyT0RrNk1Ub3dPbUYwT2pFIiwidHdpdHRlcl9yZWZyZXNoX3Rva2VuIjoiVFhsUWFrOWphRkZJWWpVeFNUUk1lVTFLWm5OUFZqUjRXRGgwYTFGcmJ6UnhNVEZwUkUweFlYQlNXVmM0T2pFM01UTTBNemd3T1RFMk9EazZNVG94T25KME9qRSIsInR3aXR0ZXJfdG9rZW5fY3JlYXRlZF9hdCI6IlRodSBBcHIgMTggMjAyNCIsInR3aXR0ZXJfdXNlcl9pZCI6IjE3NzU4MTg4MTUxNzcxNTA0NjQiLCJ1c2VybmFtZSI6IkFkbmFuMSJ9LCJnaXZlbl9uYW1lIjoiQWRuYW4iLCJmYW1pbHlfbmFtZSI6Ik11c3RhZmEiLCJuaWNrbmFtZSI6ImFkbmFuIiwibmFtZSI6IkFkbmFuIE11c3RhZmEiLCJwaWN0dXJlIjoiaHR0cHM6Ly9saDMuZ29vZ2xldXNlcmNvbnRlbnQuY29tL2EvQUNnOG9jS0EzVkpPdE1iWFV3WUFBTWFTQnJIMGRSY3ZyU1ljT0hVUGZpbXdVbUJoWVRieUVRPXM5Ni1jIiwibG9jYWxlIjoiZW4iLCJ1cGRhdGVkX2F0IjoiMjAyNC0wNS0wNlQwODowNzowOC45ODRaIiwiZW1haWwiOiJhZG5hbkB3ZWJhdmVyc2UuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImlzcyI6Imh0dHBzOi8vbW9lbWF0ZS1kZXYudXMuYXV0aDAuY29tLyIsImF1ZCI6IlIzOTBCNFNMdnA2OTRTWmN4T2NEYk1Pd3NFdDd0ZWJBIiwiaWF0IjoxNzE1MDc4MzIyLCJleHAiOjE3MTUxMTQzMjIsInN1YiI6Imdvb2dsZS1vYXV0aDJ8MTEwOTY0NTUzNDcyNTM2MzE1MTY3Iiwic2lkIjoiU2pyNHJNVjFHbjM4QlpkQ2NRRmRDVlcycjdTX19VdFIifQ.hJobxhQoI_T8lQNtFopWLJSa4XjRdbcMgAPsF7O5JDcMP8P5vT41Qe38b1OTZeUZA3kd5QKEQ2g7z4koaDHZewUk9XQwqx3d2vtWYx9aEX13Qnq3C24JirfXkNR7h6XRB_hrDC0UtF2msmHokKaiEHgn50OmcUN5yWKGwg_-5JeV2vxw_FiotEJjH5dwzxQYbjn5_9qX64UOODtxmmuF5jgT0nBPRa41PZ8CXRQreQSa_9Qxv3aQarsK0MePTee6SUKS8wTWj2quEvxyIEDp4dKuY9mpQqIyJ23BP2gC_ajkq1NJyE3_TRA-lsbGerT9YEi4SctnWStK5qTsl3UlAQ"
 
 def get_telegram_tokens
   url = URI.parse(TELEGRAM_TOKENS_URL)
@@ -17,60 +27,135 @@ def get_telegram_tokens
   end
 end
 
-def generate_text(inputs)
-  uri = URI(GENERATE_TEXT_API_URL)
-  headers = {
-      'model_id': 'llm7',
-      'Content-Type': 'application/json'
-    }
+def download_attachment(file_path, file, token)
+  begin
+    puts "File object: #{file.inspect}"
 
-  data = {
-    inputs: inputs,
-    parameters: {
-      best_of: 1, decoder_input_details: true,  details: false, stream: false,
-      do_sample: true, max_new_tokens: 500,
-      repetition_penalty: 1.15,
-      return_full_text: false,
-      seed: nil,
-      stop: [],
-      temperature: 0.9,
-      top_k: 10,
-      top_p: 0.6,
-      truncate: nil,
-      typical_p: 0.99,
-      watermark: false
-    }
-  }
+    if file.file_path
+      uri = URI.parse("https://api.telegram.org/file/bot#{token}/#{file.file_path}")
+      
+      Net::HTTP.start(uri.host, uri.port, use_ssl: true) do |http|
+        request = Net::HTTP::Get.new(uri)
+        response = http.request(request)
 
-  response = Net::HTTP.post(uri, data.to_json, headers)
+        open(file_path, 'wb') do |file|
+          file.write(response.body)
+        end
+      end
 
-  if response.code == '200'
-    response_data = JSON.parse(response.body)
-    return response_data['generated_text']
-  else
-    puts "Failed to generate text. Error: #{response.body}"
-    return nil
+      puts "File downloaded successfully: #{file_path}"
+      return file_path
+    else
+      puts "File object does not contain 'file_path' key"
+    end
+  rescue StandardError => e
+    puts "Error downloading voice message: #{e.message}"
+    puts e.backtrace.join("\n")
   end
 end
 
-tokens = get_telegram_tokens
+def process_voice_message(message, bot, char)
+  token = bot.instance_variable_get('@api').token
+  voice_file_id = message.voice.file_id
+  file = bot.api.get_file(file_id: voice_file_id)
+  download_file_path = "audio_file_#{Date.new}.ogg";
+  file_path = download_attachment(download_file_path, file, token)
 
-tokens.each do |token|
+  transcribed_text = upload_audio_file(file_path)
+  puts transcribed_text
+
+  # generate text response
+  response = process_text_message(message, bot, char, {}, transcribed_text)
+  
+  # convert text to audio
+  audio = convert_text_to_speech(response)
+  
+  # send audio to bot
+  data = File.read(audio)
+  bot.api.send_voice(chat_id: message.chat.id, voice: Faraday::UploadIO.new(StringIO.new(data), 'audio/ogg'))
+
+  delete_file(audio)
+  delete_file(file_path)
+end
+
+def process_image(file_path)
+  processed_file_path = 'processed_image.jpg'
+  image = MiniMagick::Image.open(file_path)
+
+  # Save processed image
+  image.write(processed_file_path)
+
+  processed_file_path
+end
+
+def process_image_message(message, bot, char)
+  token = bot.instance_variable_get('@api').token
+  photo_file_id = message.photo[0].file_id
+  file = bot.api.get_file(file_id: photo_file_id)
+  download_file_path = "image_file_#{Date.new}.png";
+  file_path = download_attachment(download_file_path, file, token)
+  processed_file_path = process_image(file_path)
+
+  # Generate response based on processed image
+  response = get_image_tags(processed_file_path)
+
+  process_text_message(message, bot, char, response) if response['tags']
+  # event.respond response
+
+  delete_file(file_path)
+  delete_file(processed_file_path)
+end
+
+def delete_file(file_path)
+  File.delete(file_path) if File.exist?(file_path)
+end
+
+def process_message(message, bot, char)
+  case message
+  when Telegram::Bot::Types::Message
+    if message.voice
+      process_voice_message(message, bot, char)
+    elsif message.photo
+      process_image_message(message, bot, char)
+    else
+      process_text_message(message, bot, char)
+    end
+  end
+end
+
+def process_text_message(message, bot, char, imageContent = {}, voice_text=nil)
+  user = message.from
+  input_text = message.text if message.text
+  input_text = voice_text if voice_text
+  telegram_user = create_telegram_user(user)
+  messages = UserBot.where(user_id: telegram_user.id, bot_id: char['id']).last(4).pluck(:message)
+  memories_string = messages.join("\n")
+  create_user_messages(telegram_user.id, char['id'], "user", input_text) if message.text || voice_text
+
+  character_id = char['characterid']
+  character = get_character_by_id(character_id)
+
+  return unless character
+
+  prompt = respond_to_user(character['publish']['author'], character, memories_string, "English (US)", imageContent, input_text)
+  puts prompt
+
+  response = generated_text(prompt, character_id)
+  create_user_messages(telegram_user.id, char['id'], "bot", response)
+
+  return response if voice_text
+
+  bot.api.send_message(chat_id: message.chat.id, text: response)
+end
+
+characters = get_telegram_tokens
+
+characters.each do |char|
   Thread.new do
-    Telegram::Bot::Client.run(token) do |bot|
+    Telegram::Bot::Client.run(char['token']) do |bot|
+      puts "Bot is running"
       bot.listen do |message|
-        case message
-        when Telegram::Bot::Types::Message
-          if message.audio
-            # Handle audio message
-          elsif message.photo
-            # Handle photo message
-          else
-            inputs = message.text
-            generated_text = generate_text(inputs)
-            bot.api.send_message(chat_id: message.chat.id, text: "Hello, #{generated_text}")
-          end
-        end
+        process_message(message, bot, char)
       end
     end
   end

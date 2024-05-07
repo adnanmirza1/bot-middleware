@@ -1,34 +1,35 @@
 require 'net/http'
 require 'uri'
 require 'json'
+require 'byebug'
 
-def get_image_tags(image_path, headers = {})
-  url = URI.parse("http://alb-beta.dev.moemate.io/ram")
-  model_id = "ram"
-
-  begin
-    # Prepare request
-    form_data = { 'img' => File.open(image_path, 'rb') }
-    request = Net::HTTP::Post.new(url)
-    request['model_id'] = model_id
-    headers.each { |key, value| request[key] = value }
-    request.set_form form_data, 'multipart/form-data'
-
-    # Set up HTTP connection
-    http = Net::HTTP.new(url.host, url.port)
-    http.use_ssl = (url.scheme == 'https')
-
-    # Send request
-    response = http.request(request)
-
-    # Check response
-    if response.code == '200'
-      result = JSON.parse(response.body)
-      return result['tags']
-    else
-      raise "Failed to get image tags. Response code: #{response.code}"
-    end
-  rescue => e
-    raise "Error: #{e.message}"
+def get_image_tags(blob)
+  uri = URI.parse('https://ai.dev.moemate.io/api/ram/t2t')
+  
+  fd = {}
+  fd['tags'] = 'image'
+  fd['img'] = File.open(blob, 'rb')
+  
+  request = Net::HTTP::Post.new(uri)
+  request['WebaAuth'] = TOKEN
+  request['WebaHost'] = 'ram.dev.moemate.io'
+  request['Access-Control-Allow-Origin'] = '*'
+  request['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE'
+  request['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+  request.set_form(fd, 'multipart/form-data')
+  
+  response = Net::HTTP.start(uri.hostname, uri.port, use_ssl: uri.scheme == 'https') do |http|
+    http.request(request)
+  end
+  
+  puts 'RAM response:', response.body
+  
+  if response.is_a?(Net::HTTPSuccess)
+    responseData = JSON.parse(response.body)
+    return responseData
+  else
+    errorData = JSON.parse(response.body)
+    puts 'Error in RAM response:', errorData
+    return errorData
   end
 end

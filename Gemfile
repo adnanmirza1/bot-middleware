@@ -46,6 +46,9 @@ gem 'telegram-bot-ruby'
 
 gem 'mini_magick'
 gem 'discordrb'
+gem 'activeadmin'
+gem 'sassc'
+
 
 # Use Sass to process CSS
 # gem "sassc-rails"

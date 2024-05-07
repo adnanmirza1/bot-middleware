@@ -1,0 +1,2 @@
+class TelegramUser < User
+end
