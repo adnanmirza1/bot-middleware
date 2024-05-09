@@ -1,17 +1,12 @@
-def create_telegram_user(user)
-  telegram_user = TelegramUser.find_or_initialize_by(telegram_userid: user.id)
+def check_user(user)
+  telegram_user = User.find_by(telegram_userid: user.id)
 
-  # Update other attributes if the user already exists
-  if telegram_user.persisted?
-    return telegram_user
+  if telegram_user && telegram_user.auth_token
+    telegram_user.update(username: user.username, first_name: user.first_name, last_name: user.last_name)
+    return { telegram_user: telegram_user }
   else
-    telegram_user.attributes = { username: user.username, first_name: user.first_name, last_name: user.last_name }
-  end
-
-  if telegram_user.save
-    return telegram_user
-  else
-    return "User not created: #{telegram_user.errors.full_messages.join(', ')}"
+    signup_link = "http://localhost:3000/signup?userid=#{user.id}"
+    return { signup_link: signup_link }
   end
 end
 

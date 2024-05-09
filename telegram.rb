@@ -12,20 +12,7 @@ require 'json'
 require 'net/http'
 require "byebug"
 
-TELEGRAM_TOKENS_URL = 'http://localhost:3000/get_tokens'
 TOKEN = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IlMzLUstVWhieEtHYnExbF8tbEloMiJ9.eyJhcHBfbWV0YWRhdGEiOnsiZGlzY29yZF9hY2Nlc3NfdG9rZW4iOiJDV24xOXZXcUlJNktGMmRxampkUmFmRmR1OHN4Nk4iLCJkaXNjb3JkX3JlZnJlc2hfdG9rZW4iOiJUQVBUMWhJVXhxYXNUVEd4VWI3MEVqeDhTc2IxYlAiLCJkaXNjb3JkX3Rva2VuX2NyZWF0ZWRfYXQiOiJGcmkgQXByIDI2IDIwMjQiLCJzdHJpcGVfY3VzdG9tZXJfaWQiOiJjdXNfUHdSNjl3WG9BQ0htUU8iLCJzdWJfcHJvdmlkZXIiOiJzdHJpcGUiLCJzdWJfc3RhdHVzIjoicHJvIiwidHdpdHRlcl9hY2Nlc3NfdG9rZW4iOiJVbFZrTjNGNE16aEdkMnRrWDBWRVdGOWZaalpCVVhsclVHMWxNbW90WVc1TFgxWjZkWEpDTkdsblFtUTJPakUzTVRNME16Z3dPVEUyT0RrNk1Ub3dPbUYwT2pFIiwidHdpdHRlcl9yZWZyZXNoX3Rva2VuIjoiVFhsUWFrOWphRkZJWWpVeFNUUk1lVTFLWm5OUFZqUjRXRGgwYTFGcmJ6UnhNVEZwUkUweFlYQlNXVmM0T2pFM01UTTBNemd3T1RFMk9EazZNVG94T25KME9qRSIsInR3aXR0ZXJfdG9rZW5fY3JlYXRlZF9hdCI6IlRodSBBcHIgMTggMjAyNCIsInR3aXR0ZXJfdXNlcl9pZCI6IjE3NzU4MTg4MTUxNzcxNTA0NjQiLCJ1c2VybmFtZSI6IkFkbmFuMSJ9LCJnaXZlbl9uYW1lIjoiQWRuYW4iLCJmYW1pbHlfbmFtZSI6Ik11c3RhZmEiLCJuaWNrbmFtZSI6ImFkbmFuIiwibmFtZSI6IkFkbmFuIE11c3RhZmEiLCJwaWN0dXJlIjoiaHR0cHM6Ly9saDMuZ29vZ2xldXNlcmNvbnRlbnQuY29tL2EvQUNnOG9jS0EzVkpPdE1iWFV3WUFBTWFTQnJIMGRSY3ZyU1ljT0hVUGZpbXdVbUJoWVRieUVRPXM5Ni1jIiwibG9jYWxlIjoiZW4iLCJ1cGRhdGVkX2F0IjoiMjAyNC0wNS0wNlQwODowNzowOC45ODRaIiwiZW1haWwiOiJhZG5hbkB3ZWJhdmVyc2UuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImlzcyI6Imh0dHBzOi8vbW9lbWF0ZS1kZXYudXMuYXV0aDAuY29tLyIsImF1ZCI6IlIzOTBCNFNMdnA2OTRTWmN4T2NEYk1Pd3NFdDd0ZWJBIiwiaWF0IjoxNzE1MDc4MzIyLCJleHAiOjE3MTUxMTQzMjIsInN1YiI6Imdvb2dsZS1vYXV0aDJ8MTEwOTY0NTUzNDcyNTM2MzE1MTY3Iiwic2lkIjoiU2pyNHJNVjFHbjM4QlpkQ2NRRmRDVlcycjdTX19VdFIifQ.hJobxhQoI_T8lQNtFopWLJSa4XjRdbcMgAPsF7O5JDcMP8P5vT41Qe38b1OTZeUZA3kd5QKEQ2g7z4koaDHZewUk9XQwqx3d2vtWYx9aEX13Qnq3C24JirfXkNR7h6XRB_hrDC0UtF2msmHokKaiEHgn50OmcUN5yWKGwg_-5JeV2vxw_FiotEJjH5dwzxQYbjn5_9qX64UOODtxmmuF5jgT0nBPRa41PZ8CXRQreQSa_9Qxv3aQarsK0MePTee6SUKS8wTWj2quEvxyIEDp4dKuY9mpQqIyJ23BP2gC_ajkq1NJyE3_TRA-lsbGerT9YEi4SctnWStK5qTsl3UlAQ"
-
-def get_telegram_tokens
-  url = URI.parse(TELEGRAM_TOKENS_URL)
-  response = Net::HTTP.get_response(url)
-
-  if response.is_a?(Net::HTTPSuccess)
-    return JSON.parse(response.body)
-  else
-    puts "Failed to get tokens. Response code: #{response.code}"
-    return []
-  end
-end
 
 def download_attachment(file_path, file, token)
   begin
@@ -124,31 +111,40 @@ def process_message(message, bot, char)
 end
 
 def process_text_message(message, bot, char, imageContent = {}, voice_text=nil)
-  user = message.from
-  input_text = message.text if message.text
-  input_text = voice_text if voice_text
-  telegram_user = create_telegram_user(user)
-  messages = UserBot.where(user_id: telegram_user.id, bot_id: char['id']).last(4).pluck(:message)
-  memories_string = messages.join("\n")
-  create_user_messages(telegram_user.id, char['id'], "user", input_text) if message.text || voice_text
+  result = check_user(message.from)
+  if result[:telegram_user]
+    telegram_user = result[:telegram_user]
+    input_text = message.text if message.text
+    input_text = voice_text if voice_text
 
-  character_id = char['characterid']
-  character = get_character_by_id(character_id)
+    messages = UserBot.where(user_id: telegram_user.id, bot_id: char['id']).last(4).pluck(:message)
+    memories_string = messages.join("\n")
+    create_user_messages(telegram_user.id, char['id'], "user", input_text) if message.text || voice_text
 
-  return unless character
+    character_id = char['characterid']
+    character = get_character_by_id(character_id)
 
-  prompt = respond_to_user(character['publish']['author'], character, memories_string, "English (US)", imageContent, input_text)
-  puts prompt
+    return unless character
 
-  response = generated_text(prompt, character_id)
-  create_user_messages(telegram_user.id, char['id'], "bot", response)
+    prompt = respond_to_user(character['publish']['author'], character, memories_string, "English (US)", imageContent, input_text)
+    puts prompt
 
-  return response if voice_text
+    response = generated_text(prompt, character_id)
+    create_user_messages(telegram_user.id, char['id'], "bot", response)
 
-  bot.api.send_message(chat_id: message.chat.id, text: response)
+    return response if voice_text
+
+    bot.api.send_message(chat_id: message.chat.id, text: response)
+  elsif result[:signup_link]
+    signup_link = result[:signup_link]
+    response = "You are not logged in. Please signup using following link to use telegram bot\n\n #{signup_link}"
+    bot.api.send_message(chat_id: message.chat.id, text: response)
+  else
+    # The result is neither a user nor a link
+  end
 end
 
-characters = get_telegram_tokens
+characters = TelegramBot.all
 
 characters.each do |char|
   Thread.new do

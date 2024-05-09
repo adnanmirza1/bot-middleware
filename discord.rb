@@ -1,75 +1,16 @@
+require './config/environment.rb'
 require './image_to_text'
 require './audio_to_text'
 require './text_to_audio'
-require 'discordrb'
+require './ai_prompt.rb'
+require './ai_generation_text.rb'
+require './get_character.rb'
+require './helpers.rb'
+require 'telegram/bot'
 require 'mini_magick'
-require 'net/http'
 require 'json'
-
-# Constants
-GENERATE_TEXT_API_URL = 'https://ai.dev.moemate.io/api/chat'.freeze
-DISCORD_TOKENS_URL = 'http://localhost:3000/get_discord_tokens'.freeze
-
-# Get Discord tokens
-def get_discord_tokens
-  url = URI.parse(DISCORD_TOKENS_URL)
-  response = Net::HTTP.get_response(url)
-
-  if response.is_a?(Net::HTTPSuccess)
-    return JSON.parse(response.body)
-  else
-    puts "Failed to get tokens. Response code: #{response.code}"
-    return []
-  end
-end
-
-# Generate text using an API
-def generate_text(inputs)
-  uri = URI.parse(GENERATE_TEXT_API_URL)
-  data = {
-    inputs: inputs,
-    parameters: {
-      best_of: 1,
-      decoder_input_details: true,
-      details: false,
-      stream: true,
-      do_sample: true,
-      max_new_tokens: 500,
-      repetition_penalty: 1.15,
-      return_full_text: false,
-      seed: nil,
-      stop: ["USER:", "User:", "Human:"],
-      temperature: 0.9,
-      top_k: 10,
-      top_p: 0.6,
-      truncate: nil,
-      typical_p: 0.99,
-      watermark: false
-    }
-  }
-
-  headers = {
-    'Content-Type': 'application/json',
-    'webahost': 'llm2.dev.moemate.io',
-    'WebaAuth': 'YOUR_WEBA_AUTH_TOKEN',
-    'Content-Length': data.to_json.length
-  }
-
-  http = Net::HTTP.new(uri.host, uri.port)
-  http.use_ssl = true
-
-  request = Net::HTTP::Post.new(uri.request_uri)
-  request.body = data.to_json
-  headers.each { |key, value| request[key] = value }
-
-  response = http.request(request)
-  
-  if response.code == '200'
-    return JSON.parse(response.body)["generated_text"]
-  else
-    raise "Failed to make chat API request. Response code: #{response.code}"
-  end
-end
+require 'net/http'
+require "byebug"
 
 # Download attachment from Discord message
 def download_attachment(uri, filename)
@@ -104,11 +45,11 @@ end
 # Main bot logic
 def main
   # Get Discord tokens
-  tokens = get_discord_tokens
+  characters = DiscordBot.all
 
   # Create and run bots for each token
-  tokens.each do |token|
-    bot = Discordrb::Bot.new(token: token)
+  characters.each do |char|
+    bot = Discordrb::Bot.new(token: char['token'])
 
     bot.message do |event|
       handle_message(event)
